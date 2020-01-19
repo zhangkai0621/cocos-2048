@@ -1,0 +1,103 @@
+{
+  "version": "1.1.1",
+  "windows": {
+    "main": {
+      "main": true,
+      "url": "app://editor/index.html",
+      "windowType": "dockable",
+      "x": 0,
+      "y": 23,
+      "width": 1440,
+      "height": 825,
+      "layout": {
+        "children": [
+          {
+            "children": [
+              {
+                "active": 0,
+                "children": [
+                  "hierarchy"
+                ],
+                "height": 350,
+                "type": "panel",
+                "width": 229
+              },
+              {
+                "active": 0,
+                "children": [
+                  "assets"
+                ],
+                "height": 391,
+                "type": "panel",
+                "width": 229
+              }
+            ],
+            "height": 744,
+            "type": "dock-v",
+            "width": 229
+          },
+          {
+            "children": [
+              {
+                "active": 0,
+                "children": [
+                  "scene"
+                ],
+                "height": 475,
+                "type": "panel",
+                "width": 864
+              },
+              {
+                "active": 0,
+                "children": [
+                  "console",
+                  "timeline",
+                  "game-window"
+                ],
+                "height": 266,
+                "type": "panel",
+                "width": 864
+              }
+            ],
+            "height": 744,
+            "type": "dock-v",
+            "width": 864
+          },
+          {
+            "active": 0,
+            "children": [
+              "inspector",
+              "cocos-services"
+            ],
+            "height": 744,
+            "type": "panel",
+            "width": 341
+          }
+        ],
+        "type": "dock-h"
+      },
+      "panels": [
+        "hierarchy",
+        "assets",
+        "scene",
+        "console",
+        "timeline",
+        "game-window",
+        "inspector",
+        "cocos-services"
+      ]
+    }
+  },
+  "panels": {
+    "node-library": {
+      "x": 570,
+      "y": 161,
+      "width": 300,
+      "height": 502
+    }
+  },
+  "panelLabelWidth": {
+    "inspector": null
+  },
+  "panelLabelWidth.inspector": null
+}
