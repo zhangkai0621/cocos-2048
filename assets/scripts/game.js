@@ -2,7 +2,7 @@
  * @Description: 场景开始脚本
  * @Author: zhangkai
  * @Date: 2020-01-17 10:40:15
- * @LastEditTime : 2020-01-17 16:46:08
+ * @LastEditTime : 2020-01-19 14:11:26
  * @LastEditors  : zhangkai
  */
 
@@ -10,8 +10,9 @@
  const NUMBERS = [2, 4]; // 初始化数字
  const INIT_NUMBERS = 3; // 初始化方块的个数
  const MIN_LENGTH = 50; // 最小的拖动距离
+ const MOVE_DURATION = 0.1; // 移动耗时
 
-cc.Class({
+let game = cc.Class({
     extends: cc.Component,
 
     properties: {
@@ -20,6 +21,7 @@ cc.Class({
         blockPrefab: cc.Prefab,
         gap: 20, // 格子间隔
         bg: cc.Node,
+        gameOverNode: cc.Node
     },
     // onLoad () {},
 
@@ -38,7 +40,11 @@ cc.Class({
         let y = this.blockSize;
         this.positions = []; // 用于存储位置信息
         for (let i = 0; i < ROWS; ++i) {
-            this.positions.push([0, 0, 0, 0]);
+            let data = [];
+            for (let i = 0; i < ROWS; i++) {
+                data.push(0);
+            }
+            this.positions.push(data);
             for (let j = 0; j < ROWS; ++j) {
                 let block = cc.instantiate(this.blockPrefab);
                 // 设置方块大小
@@ -62,6 +68,7 @@ cc.Class({
      */    
     // 
     init() {
+        this.gameOverNode.active = false;
         this.updateScore(0);
         // 绑定事件
         this.addEvents();
@@ -142,6 +149,58 @@ cc.Class({
         return locations;
     },
     /**
+     * @description: 移动完成后
+     * @Author: zhangkai
+     * @Date: 2020-01-19 08:44:03
+     * @param : hasMoved 是否移动
+     */
+    afterMove(hasMoved) {
+        if (hasMoved) {
+            this.updateScore(this.score + 1);
+            this.addBlock();
+        }
+        if (this.checkFail()) {
+            this.gameOver();
+        }
+    },
+    
+    // 检查是否失败
+    checkFail() {
+        for (let i = 0; i < ROWS; i++) {
+            for (let j = 0; j < ROWS; j++) {
+                if (this.data[i][j] === 0) return false; // 是否数值全部填满
+                // 同一行或者列是否还可以合并
+                if (j > 0 && this.data[i][j] === this.data[i][j - 1]) return false; 
+                if (j < ROWS - 1 && this.data[i][j] === this.data[i][j + 1]) return false;  // 横向
+
+                if (i < ROWS - 1 && this.data[i][j] === this.data[i + 1][j]) return false; 
+                if (i > 0 && this.data[i][j] === this.data[i - 1][j]) return false; // 纵向
+            }
+        }
+        return true;
+    },
+    // 游戏结束函数
+    gameOver() {
+        console.log('game over');
+        this.gameOverNode.active = true;
+    },
+    /**
+     * @description: 移动方块
+     * @Author: zhangkai
+     * @Date: 2020-01-19 08:56:48
+     * @param : block 需要移动的块
+     * @param : position 需要到的位置
+     * @param : callback 移动完成后的回调函数
+     */
+    doMove(block, position, callback) {
+        let action = cc.moveTo(MOVE_DURATION, position);
+        let finish = cc.callFunc(() => {
+            callback && callback();
+        });
+        // 按顺序执行
+        block.runAction(cc.sequence(action, finish));
+    },
+    /**
      * @description: 添加事件监听
      * @Author: zhangkai
      * @Date: 2020-01-17 16:10:23
@@ -166,45 +225,146 @@ cc.Class({
             // 水平方向
             if (Math.abs(vector.x) > Math.abs(vector.y)) {
                 if (vector.x > 0) {
-                    this.moveRight();
+                    this.moveBlock('RIGHT');
                 }
                 else {
-                    this.moveLeft();
+                    this.moveBlock('LEFT');
                 }
             } // 垂直方向
             else {
                 if (vector.y > 0) {
-                    this.moveUp();
+                    this.moveBlock('UP');
                 }
                 else {
-                    this.moveDown();
+                    this.moveBlock('DOWN');
                 }
             }
         }
     },
-    // 右滑
-    moveRight() {
-        cc.log('right');
-    },
-    // 左滑
-    moveLeft() {
-        cc.log('left');
+    /**
+     * @description: 滑动滑块
+     * @Author: zhangkai
+     * @Date: 2020-01-19 09:30:36
+     * @param : direction 方向
+     */
+    moveBlock(direction) {
+        let hasMoved = false;
+        let toMove = []; // 准备移动的数据
+        let counter = 0; // 计数是否完成
+        switch(direction) {
+            case 'RIGHT':
+                for (let i = 0; i < ROWS; i++) {
+                    for (let j = ROWS - 1; j >= 0; j--) {
+                        if (this.data[i][j] !== 0) {
+                            toMove.push({x: i, y: j}); // 
+                        }
+                    }
+                }
+                break;
+            case 'UP':
+                for (let i = ROWS - 1; i >=0; i--) {
+                    for (let j = 0; j < ROWS; j++) {
+                        if (this.data[i][j] !== 0) {
+                            toMove.push({x: i, y: j}); // 
+                        }
+                    }
+                }
+                break;
+            default:
+                for (let i = 0; i < ROWS; i++) {
+                    for (let j = 0; j < ROWS; j++) {
+                        if (this.data[i][j] !== 0) {
+                            toMove.push({x: i, y: j}); // 
+                        }
+                    }
+                }
+                break;
+        }
+        // 移动操作
+        let move = (x, y, callback) => {
+            let prevRow = null, // 前一行
+            prevColumn = null, // 前一列
+            topIndex = 0, // 到顶的下标
+            toDirection = null; // 反向
+            switch(direction) {
+                case 'LEFT':
+                    prevRow = x;
+                    topIndex = 0;
+                    prevColumn = y - 1;
+                    toDirection = y; // 到顶的方向
+                    
+                    break;
+                case 'RIGHT':
+                    prevRow = x;
+                    topIndex = ROWS - 1;
+                    prevColumn = y + 1;
+                    toDirection = y; // 到顶的方向
+                    break;
+                case 'UP':
+                    prevRow = x + 1;
+                    topIndex = ROWS - 1;
+                    prevColumn = y;
+                    toDirection = x; // 到顶的方向
+                    break;
+                case 'DOWN':
+                    prevRow = x - 1;
+                    topIndex = 0;
+                    prevColumn = y;
+                    toDirection = x; // 到顶的方向
+                    break;
+                default:
+                    break;
 
-        let toMove = [];
-        for (let i = 0; i < ROWS; i++) {
-            for (let j = 0; j < ROWS; j++) {
-                if (this.data[i][j] !== 0) {
-                    toMove.push({x: i, y: j}); // 
-                }
             }
+            // 移到顶结束
+            if (toDirection === topIndex || this.data[x][y] === 0) {
+                callback && callback();
+                return;
+            } // 移动
+            else if (this.data[prevRow][prevColumn] === 0) {
+                let block = this.blocks[x][y]; // 当前的方块
+                let position = this.positions[prevRow][prevColumn]; // 前一个方块的位置
+                this.blocks[prevRow][prevColumn] = block; // 后一个的方块赋值给前一个
+                this.data[prevRow][prevColumn] = this.data[x][y]; // 把后一个的数值赋值给前一个
+                this.data[x][y] = 0; // 移动完后当前数值置为 0 
+                this.blocks[x][y] = null; // 移动完后当前方块置为 null
+                this.doMove(block, position, () => {
+                    // 移动完成后下一轮移动
+                    move(prevRow, prevColumn, callback);
+                })
+                hasMoved = true;
+            } // 前一个数字与后一个数字相等合并
+            else if (this.data[prevRow][prevColumn] === this.data[x][y]) {
+                let block = this.blocks[x][y]; // 当前的方块
+                let position = this.positions[prevRow][prevColumn]; // 前一个方块的位置
+                this.data[prevRow][prevColumn] *= 2; // 两个方块数值合并
+                this.data[x][y] = 0; // 移动完后当前数值置为 0 
+                this.blocks[x][y] = null; // 移动完后当前方块置为 null
+                this.blocks[prevRow][prevColumn].getComponent('block').setNumber(this.data[prevRow][prevColumn]); // 设置前一个方块的数值
+                this.doMove(block, position, () => {
+                    // 移动完成后下一轮移动
+                    block.destroy();
+                    callback && callback();
+                })
+                hasMoved = true;
+            }
+            else {
+                callback && callback();
+                return;
+            }
+        };
+
+        for (let i = 0; i < toMove.length; i++) {
+            move(toMove[i].x, toMove[i].y, () => {
+                counter++;
+                if (counter === toMove.length) {
+                    this.afterMove(hasMoved);
+                }
+            })
         }
-    },
-    // 上滑
-    moveUp() {
-        cc.log('up');
-    },
-    // 下滑
-    moveDown() {
-        cc.log('down');
+
+        
     },
 });
+
+module.exports = game;
