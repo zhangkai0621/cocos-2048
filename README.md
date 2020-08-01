@@ -1,2 +1,2 @@
-# cocos-2048
- cocos creator 2048游戏
+# cocos creator 引擎
+2048游戏
